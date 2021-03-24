@@ -33,7 +33,9 @@ use Cake\Routing\Middleware\RoutingMiddleware;
 use Authentication\AuthenticationService;
 use Authentication\AuthenticationServiceInterface;
 use Authentication\AuthenticationServiceProviderInterface;
+use Authentication\Identifier\IdentifierInterface;
 use Authentication\Middleware\AuthenticationMiddleware;
+use Cake\Routing\Router;
 use Psr\Http\Message\ServerRequestInterface;
 
 
@@ -75,6 +77,8 @@ class Application extends BaseApplication implements AuthenticationServiceProvid
         }
 
         // Load more plugins here
+
+        $this->addPlugin('Authentication');
     }
 
     /**
@@ -151,32 +155,46 @@ class Application extends BaseApplication implements AuthenticationServiceProvid
         // Load more plugins here
     }
     // add new
-    public function getAuthenticationService(ServerRequestInterface $request): AuthenticationServiceInterface
-    {
-        $authenticationService = new AuthenticationService([
-            'unauthenticatedRedirect' => '/users/login',
-            'queryParam' => 'redirect',
-        ]);
+    /**
+ * Returns a service provider instance.
+ *
+ * @param \Psr\Http\Message\ServerRequestInterface $request Request
+ * @return \Authentication\AuthenticationServiceInterface
+ */
+public function getAuthenticationService(ServerRequestInterface $request): AuthenticationServiceInterface
+{
+    $service = new AuthenticationService();
 
-        // Load identifiers, ensure we check email and password fields
-        $authenticationService->loadIdentifier('Authentication.Password', [
-            'fields' => [
-                'username' => 'email',
-                'password' => 'password',
-            ]
-        ]);
+    // Define where users should be redirected to when they are not authenticated
+    $service->setConfig([
+        'unauthenticatedRedirect' => Router::url([
+                'prefix' => false,
+                'plugin' => null,
+                'controller' => 'Users',
+                'action' => 'login',
+        ]),
+        'queryParam' => 'redirect',
+    ]);
 
-        // Load the authenticators, you want session first
-        $authenticationService->loadAuthenticator('Authentication.Session');
-        // Configure form data check to pick email and password
-        $authenticationService->loadAuthenticator('Authentication.Form', [
-            'fields' => [
-                'username' => 'email',
-                'password' => 'password',
-            ],
-            'loginUrl' => '/users/login',
-        ]);
+    $fields = [
+        IdentifierInterface::CREDENTIAL_USERNAME => 'email',
+        IdentifierInterface::CREDENTIAL_PASSWORD => 'password'
+    ];
+    // Load the authenticators. Session should be first.
+    $service->loadAuthenticator('Authentication.Session');
+    $service->loadAuthenticator('Authentication.Form', [
+        'fields' => $fields,
+        'loginUrl' => Router::url([
+            'prefix' => false,
+            'plugin' => null,
+            'controller' => 'Users',
+            'action' => 'login',
+        ]),
+    ]);
 
-        return $authenticationService;
-    }
+    // Load identifiers
+    $service->loadIdentifier('Authentication.Password', compact('fields'));
+
+    return $service;
+}
 }

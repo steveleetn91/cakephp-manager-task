@@ -9,10 +9,9 @@ class User extends Entity
     // Code from bake.
 
     // Add this method
-    protected function _setPassword(string $password) : ?string
+    protected function _setPassword(string $password)
     {
-        if (strlen($password) > 0) {
-            return (new DefaultPasswordHasher())->hash($password);
-        }
+        $hasher = new DefaultPasswordHasher();
+        return $hasher->hash($password);
     }
 }

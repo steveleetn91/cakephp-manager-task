@@ -13,35 +13,26 @@ class UsersController extends AppController
         $this->set(compact('users'));
     }
 
+    // in src/Controller/UsersController.php
     public function beforeFilter(\Cake\Event\EventInterface $event)
     {
         parent::beforeFilter($event);
-        // Configure the login action to not require authentication, preventing
-        // the infinite redirect loop issue
-        $this->Authentication->addUnauthenticatedActions(['login']);
-        $this->Authentication->addUnauthenticatedActions(['login', 'add']);
+
+        $this->Authentication->allowUnauthenticated(['login']);
     }
 
     public function login()
-    {
-        $this->logout();
-        $this->request->allowMethod(['get', 'post']);
-        $result = $this->Authentication->getResult();
-        // regardless of POST or GET, redirect if user is logged in
-        if ($result->isValid()) {
-            // redirect to /articles after login success
-            $redirect = $this->request->getQuery('redirect', [
-                'controller' => 'Articles',
-                'action' => 'index',
-            ]);
-
-            return $this->redirect($redirect);
-        }
-        // display error if user submitted and authentication failed
-        if ($this->request->is('post') && !$result->isValid()) {
-            $this->Flash->error(__('Invalid username or password'));
-        }
+{
+    $result = $this->Authentication->getResult();
+    // If the user is logged in send them away.
+    if ($result->isValid()) {
+        $target = $this->Authentication->getLoginRedirect() ?? '/tasks';
+        return $this->redirect($target);
     }
+    if ($this->request->is('post') && !$result->isValid()) {
+        $this->Flash->error('Invalid username or password');
+    }
+}
 
     public function add()
     {
